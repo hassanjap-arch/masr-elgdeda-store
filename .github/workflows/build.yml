@@ -22,9 +22,11 @@ jobs:
           flutter-version: '3.44.8'
           cache: true
 
-      - name: Install dependencies & Build APK
+      - name: Move files to root & Build APK
         run: |
-          cd market
+          shopt -s dotglob
+          mv market/* .
+          rmdir market
           flutter pub get
           pip install flet
           flet build apk
@@ -33,4 +35,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: release-apk
-          path: market/build/apk/app-release.apk
+          path: build/apk/app-release.apk
