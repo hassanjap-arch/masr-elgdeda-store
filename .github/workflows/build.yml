@@ -24,9 +24,7 @@ jobs:
 
       - name: Move files to root & Build APK
         run: |
-          shopt -s dotglob
-          mv market/* .
-          rmdir market
+          cp -r market/* .
           flutter pub get
           pip install flet
           flet build apk
