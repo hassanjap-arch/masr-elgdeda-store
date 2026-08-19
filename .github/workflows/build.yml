@@ -22,9 +22,13 @@ jobs:
           flutter-version: '3.44.8'
           cache: true
 
-      - name: Install dependencies & Build APK
+      - name: Find project and Build APK
         run: |
-          cd market
+          # البحث التلقائي عن مكان ملف المشروع والدخول إليه
+          PROJECT_DIR=$(find . -name "pubspec.yaml" -exec dirname {} \;)
+          echo "Found project at: $PROJECT_DIR"
+          cd "$PROJECT_DIR"
+          
           flutter pub get
           pip install flet
           flet build apk
@@ -33,4 +37,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: release-apk
-          path: market/build/apk/app-release.apk
+          path: '**/build/apk/app-release.apk'
