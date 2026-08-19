@@ -23,8 +23,8 @@ jobs:
           cache: true
 
       - name: Install dependencies & Build APK
-        working-directory: market
         run: |
+          cd market
           flutter pub get
           pip install flet
           flet build apk
