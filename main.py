@@ -58,6 +58,7 @@ def fetch_products_from_sheets():
 
 def main(page: ft.Page):
     page.title = "بوابة مشتريات - شركة مصر الجديدة"
+    page.window_icon = "assets/icon.png"
     page.theme_mode = ft.ThemeMode.LIGHT
     page.rtl = True
     page.padding = 8
