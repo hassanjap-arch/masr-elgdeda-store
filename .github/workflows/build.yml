@@ -25,7 +25,7 @@ jobs:
       - name: Build Flet App
         run: |
           pip install flet gspread
-          flet build apk --icon assets/icon.png
+          flet build apk
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
