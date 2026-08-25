@@ -27,7 +27,7 @@ def main(page: ft.Page):
     page.padding = 0
     page.bgcolor = "#f8fafc"
     page.scroll = ft.ScrollMode.ALWAYS
-    page.theme = ft.Theme(scrollbar_theme=ft.ScrollbarTheme(thumb_visibility=True, track_visibility=True, thickness=12, radius=6, thumb_color="#1e3a8a", track_color="#e2e8f0"))
+    page.theme = ft.Theme(scrollbar_theme=ft.ScrollbarTheme(thumb_visibility=True, track_visibility=True, thickness=10, radius=6, thumb_color="#1e3a8a", track_color="#e2e8f0"))
 
     paper_products, medical_products = fetch_products_from_sheets()
     cart, saved_client_info = {}, {"pharmacy": "", "phone": ""}
@@ -40,8 +40,8 @@ def main(page: ft.Page):
     nav_home_btn = ft.ElevatedButton("الرئيسية", on_click=lambda e: show_home(), style=ft.ButtonStyle(bgcolor="#64748b", color="#ffffff", padding=8))
     new_order_btn = ft.ElevatedButton("طلب جديد", icon=ft.Icons.REFRESH, style=ft.ButtonStyle(bgcolor="#ef4444", color="#ffffff", padding=5), visible=False)
 
-    paper_list_view = ft.Column(spacing=6)
-    medical_list_view = ft.Column(spacing=6)
+    paper_list_view = ft.ListView(spacing=6, expand=False, shrink_wrap=True)
+    medical_list_view = ft.ListView(spacing=6, expand=False, shrink_wrap=True)
 
     invoice_dropdown_list = ft.Column(spacing=4, scroll=ft.ScrollMode.AUTO)
     invoice_dropdown_container = ft.Container(content=ft.Column(controls=[ft.Text("فاتورتك الحالية:", size=14, weight=ft.FontWeight.BOLD, color="#1e3a8a"), ft.Divider(height=1), invoice_dropdown_list], spacing=6), padding=10, bgcolor="#ffffff", border_radius=10, border=ft.Border.all(2, "#1e3a8a"), width=400, visible=False)
@@ -82,6 +82,8 @@ def main(page: ft.Page):
         if not cart: return
         current_section["name"]="checkout"
         invoice_dropdown_container.visible=False
+        page.views.append(ft.View(route="/checkout", controls=[main_content]))
+        page.update()
 
         pharmacy_name_input = ft.TextField(label="اسم الصيدلية *", value=saved_client_info["pharmacy"], border_color="#1e3a8a", autofocus=True)
         phone_number_input = ft.TextField(label="رقم الهاتف *", value=saved_client_info["phone"], border_color="#1e3a8a", keyboard_type=ft.KeyboardType.PHONE)
@@ -99,12 +101,9 @@ def main(page: ft.Page):
             saved_client_info["pharmacy"]=pharmacy_name_input.value.strip()
             saved_client_info["phone"]=phone_number_input.value.strip()
             if not saved_client_info["pharmacy"] or not saved_client_info["phone"]:
-                send_btn.bgcolor="#9ca3af"
-                send_btn.text="اكتب اسم الصيدلية والهاتف أولاً"
-                send_btn.url=None
+                send_btn.bgcolor="#9ca3af"; send_btn.text="اكتب اسم الصيدلية والهاتف أولاً"; send_btn.url=None
             else:
-                send_btn.bgcolor="#25D366"
-                send_btn.text="إرسال عبر الواتساب"
+                send_btn.bgcolor="#25D366"; send_btn.text="إرسال عبر الواتساب"
                 msg = [f"*طلب جديد - مصر الجديدة*", f"الصيدلية: {saved_client_info['pharmacy']}", f"الهاتف: {saved_client_info['phone']}", "", "الأصناف:"]
                 t_sum=0
                 for name, details in cart.items():
@@ -113,12 +112,8 @@ def main(page: ft.Page):
                 send_btn.url = f"https://wa.me/201095969276?text={urllib.parse.quote(chr(10).join(msg))}"
             page.update()
 
-        pharmacy_name_input.on_change=update_link
-        phone_number_input.on_change=update_link
-        update_link()
-
-        header_section_local = ft.Container(content=ft.Row(controls=[ft.Image(src="/logo.png", height=50, fit="contain")], alignment=ft.MainAxisAlignment.CENTER), padding=4, bgcolor="#ffffff", border_radius=8, width=400)
-
+        pharmacy_name_input.on_change=update_link; phone_number_input.on_change=update_link; update_link()
+        header_section_local = ft.Container(content=ft.Row(controls=[ft.Image(src="/logo.png", height=50, fit="contain")], alignment=ft.MainAxisAlignment.CENTER), padding=ft.padding.only(top=35, bottom=4, left=4, right=4), bgcolor="#ffffff", border_radius=8, width=400)
         main_content.controls=[
             header_section_local,
             ft.Container(content=ft.Row(controls=[ft.ElevatedButton("رجوع", on_click=lambda e: show_home(), style=ft.ButtonStyle(bgcolor="#64748b", color="#ffffff")), ft.Text("تأكيد الطلب", size=16, weight=ft.FontWeight.BOLD)], alignment=ft.MainAxisAlignment.SPACE_BETWEEN), width=400),
@@ -135,9 +130,13 @@ def main(page: ft.Page):
         if cart[name]["qty"] <= 0: del cart[name]
         update_cart_ui()
 
-    def set_cart_qty(product, qty):
-        try: qty = int(qty)
-        except: qty = 0
+    def set_cart_qty(product, qty_str):
+        # التعديل المطلوب: المربع فاضي مش صفر
+        if qty_str.strip() == "":
+            if product["name"] in cart: del cart[product["name"]]
+            update_cart_ui(); return
+        try: qty = int(qty_str)
+        except: return
         name = product["name"]
         if qty <= 0:
             if name in cart: del cart[name]
@@ -149,14 +148,16 @@ def main(page: ft.Page):
     def build_product_card(product, color_code):
         current_qty = cart[product["name"]]["qty"] if product["name"] in cart else 0
         is_added = current_qty > 0
-        qty_field = ft.TextField(value=str(current_qty), width=55, height=32, text_size=13, content_padding=4, text_align=ft.TextAlign.CENTER, keyboard_type=ft.KeyboardType.NUMBER, border_radius=6, border_color="#16a34a" if is_added else "#cbd5e1")
+        # هنا التعديل: فاضي بدل صفر
+        qty_value = "" if current_qty == 0 else str(current_qty)
+        qty_field = ft.TextField(value=qty_value, hint_text="", width=55, height=32, text_size=14, content_padding=4, text_align=ft.TextAlign.CENTER, keyboard_type=ft.KeyboardType.NUMBER, border_radius=6, border_color="#16a34a" if is_added else "#cbd5e1")
         def on_qty_change(e): set_cart_qty(product, e.control.value)
         qty_field.on_change = on_qty_change
         def on_add_click(e): add_to_cart(product, 1)
         def on_delete_click(e):
             if product["name"] in cart: del cart[product["name"]]; update_cart_ui()
         add_btn_bg = "#16a34a" if is_added else color_code
-        add_btn_text = f"+ ({current_qty})" if is_added else "+ إضافة"
+        add_btn_text = f"+ ({current_qty})" if is_added else "+ اضافة"
         return ft.Container(content=ft.Column(controls=[ft.Text(product["name"], size=13, weight=ft.FontWeight.BOLD, color="#1e293b"), ft.Row(controls=[ft.Text(f"{product['price']} ج.م / {product['unit']}", size=11, color="#b91c1c", weight=ft.FontWeight.BOLD), ft.Row(controls=[ft.Text("العدد:", size=10, color="#475569"), qty_field, ft.ElevatedButton(add_btn_text, on_click=on_add_click, style=ft.ButtonStyle(bgcolor=add_btn_bg, color="#ffffff", padding=5), height=30), ft.ElevatedButton("حذف", on_click=on_delete_click, style=ft.ButtonStyle(bgcolor="#ef4444", color="#ffffff", padding=5), height=30, visible=is_added)], spacing=3)], alignment=ft.MainAxisAlignment.SPACE_BETWEEN)], spacing=5), padding=8, bgcolor="#f0fdf4" if is_added else "#ffffff", border_radius=8, border=ft.Border.all(2 if is_added else 1, "#16a34a" if is_added else "#e2e8f0"))
 
     def build_cart_widget():
@@ -185,11 +186,12 @@ def main(page: ft.Page):
                 cart_items_container.controls.append(ft.Container(content=ft.Column(controls=[ft.Row(controls=[ft.Text(f"• {name}", size=13, weight=ft.FontWeight.BOLD, expand=True), ft.IconButton(icon=ft.Icons.DELETE_OUTLINE, icon_color="#ef4444", icon_size=20, on_click=lambda e, n=name: remove_item(n))], alignment=ft.MainAxisAlignment.SPACE_BETWEEN), ft.Row(controls=[ft.Text(f"{details['price']} ج.م", size=12, color="#64748b"), ft.Row(controls=[ft.IconButton(icon=ft.Icons.REMOVE_CIRCLE_OUTLINE, icon_color="#b91c1c", icon_size=18, on_click=lambda e, n=name: change_qty(n, -1)), ft.Text(f"{details['qty']} {details['unit']}", size=13, weight=ft.FontWeight.BOLD), ft.IconButton(icon=ft.Icons.ADD_CIRCLE_OUTLINE, icon_color="#15803d", icon_size=18, on_click=lambda e, n=name: change_qty(n, 1))], spacing=0), ft.Text(f"= {item_total} ج.م", size=13, weight=ft.FontWeight.BOLD, color="#b91c1c")], alignment=ft.MainAxisAlignment.SPACE_BETWEEN)], spacing=2), padding=8, bgcolor="#f1f5f9", border_radius=8))
             total_price_text.value=f"إجمالي الطلب: {total_sum} ج.م"; top_bar_total_text.value=f"الإجمالي: {total_sum} ج.م"; top_bar_count_text.value=f"({len(cart)} أصناف)"; new_order_btn.visible=True
             if current_section["show_invoice"]: build_invoice_dropdown()
-        if current_section["name"]=="paper": filter_paper_logic(current_section["qp"])
-        elif current_section["name"]=="medical": filter_medical_logic(current_section["qm"])
+        # تحسين البطء: ما نعيدش بناء الليستة كل مرة
         page.update()
 
-    header_section = ft.Container(content=ft.Row(controls=[ft.Image(src="/logo.png", height=60, fit="contain")], alignment=ft.MainAxisAlignment.CENTER), padding=4, bgcolor="#ffffff", border_radius=8, width=400)
+    # فريم علوي ينزل الصفحة لتحت عشان شريط الساعة
+    top_safe_space = ft.Container(height=30, bgcolor="#ffffff")
+    header_section = ft.Container(content=ft.Row(controls=[ft.Image(src="/logo.png", height=60, fit="contain")], alignment=ft.MainAxisAlignment.CENTER), padding=ft.padding.only(top=10, bottom=6, left=4, right=4), bgcolor="#ffffff", border_radius=8, width=400)
     main_content = ft.Column(spacing=10, expand=True, horizontal_alignment=ft.CrossAxisAlignment.CENTER, scroll=ft.ScrollMode.ALWAYS)
 
     def build_sticky_top_bar():
@@ -198,8 +200,10 @@ def main(page: ft.Page):
 
     def show_home(e=None):
         current_section["name"]="home"; current_section["show_invoice"]=False; invoice_dropdown_container.visible=False
+        if len(page.views) > 1: page.views.clear()
+        page.views.append(ft.View(route="/", controls=[ft.Column(controls=[top_safe_space, header_section, main_content], scroll=ft.ScrollMode.ALWAYS, expand=True)]))
         home_cards = ft.Column(controls=[ft.Container(content=ft.Column(controls=[ft.Image(src="/paper.png", height=110, fit="cover", border_radius=8), ft.Text("قسم الورقيات والعناية", size=15, weight=ft.FontWeight.BOLD, color="#1e3a8a"), ft.ElevatedButton("دخول القسم", on_click=show_paper, style=ft.ButtonStyle(bgcolor="#1e3a8a", color="#ffffff"))], horizontal_alignment=ft.CrossAxisAlignment.CENTER, spacing=6), padding=10, bgcolor="#ffffff", border_radius=12, border=ft.Border.all(1, "#e2e8f0"), width=400), ft.Container(content=ft.Column(controls=[ft.Image(src="/medical.png", height=110, fit="cover", border_radius=8), ft.Text("قسم المستلزمات والأجهزة الطبية", size=15, weight=ft.FontWeight.BOLD, color="#9f1239"), ft.ElevatedButton("دخول القسم", on_click=show_medical, style=ft.ButtonStyle(bgcolor="#9f1239", color="#ffffff"))], horizontal_alignment=ft.CrossAxisAlignment.CENTER, spacing=6), padding=10, bgcolor="#ffffff", border_radius=12, border=ft.Border.all(1, "#e2e8f0"), width=400)], spacing=10, horizontal_alignment=ft.CrossAxisAlignment.CENTER)
-        main_content.controls=[header_section, ft.Text("مرحباً بكم! اختار القسم للبدء:", size=14, weight=ft.FontWeight.BOLD, text_align=ft.TextAlign.CENTER, color="#1e293b"), home_cards, ft.Container(content=build_cart_widget(), width=400)]
+        main_content.controls=[ft.Text("مرحباً بكم! اختار القسم للبدء:", size=14, weight=ft.FontWeight.BOLD, text_align=ft.TextAlign.CENTER, color="#1e293b"), home_cards, ft.Container(content=build_cart_widget(), width=400)]
         page.update()
 
     def show_paper(e=None):
@@ -207,7 +211,8 @@ def main(page: ft.Page):
         def on_search_change(ev): filter_paper_logic(ev.control.value.strip().lower()); page.update()
         search_field = ft.TextField(hint_text="ابحث ورقيات...", on_change=on_search_change, border_radius=8, border_color="#cbd5e1", content_padding=8, height=40, text_size=13, width=400)
         filter_paper_logic(current_section["qp"])
-        main_content.controls=[header_section, build_sticky_top_bar(), ft.Container(content=ft.Text("قسم الورقيات", size=16, weight=ft.FontWeight.BOLD, color="#1e3a8a"), width=400), search_field, ft.Container(content=paper_list_view, width=400)]
+        page.views.append(ft.View(route="/paper", controls=[ft.Column(controls=[top_safe_space, header_section, main_content], scroll=ft.ScrollMode.ALWAYS, expand=True)]))
+        main_content.controls=[build_sticky_top_bar(), ft.Container(content=ft.Text("قسم الورقيات", size=16, weight=ft.FontWeight.BOLD, color="#1e3a8a"), width=400), search_field, ft.Container(content=paper_list_view, width=400)]
         page.update()
 
     def show_medical(e=None):
@@ -215,31 +220,22 @@ def main(page: ft.Page):
         def on_search_change(ev): filter_medical_logic(ev.control.value.strip().lower()); page.update()
         search_field = ft.TextField(hint_text="ابحث مستلزمات...", on_change=on_search_change, border_radius=8, border_color="#cbd5e1", content_padding=8, height=40, text_size=13, width=400)
         filter_medical_logic(current_section["qm"])
-        main_content.controls=[header_section, build_sticky_top_bar(), ft.Container(content=ft.Text("قسم المستلزمات", size=16, weight=ft.FontWeight.BOLD, color="#9f1239"), width=400), search_field, ft.Container(content=medical_list_view, width=400)]
+        page.views.append(ft.View(route="/medical", controls=[ft.Column(controls=[top_safe_space, header_section, main_content], scroll=ft.ScrollMode.ALWAYS, expand=True)]))
+        main_content.controls=[build_sticky_top_bar(), ft.Container(content=ft.Text("قسم المستلزمات", size=16, weight=ft.FontWeight.BOLD, color="#9f1239"), width=400), search_field, ft.Container(content=medical_list_view, width=400)]
         page.update()
 
-    # --- ده كود زرار الباك للموبايل واللابتوب ---
-    def handle_back():
-        if current_section["name"]!= "home":
-            show_home()
-            return True
-        return False
-
-    def on_keyboard(e: ft.KeyboardEvent):
-        if e.key == "Escape":
-            if handle_back():
-                e.prevent_default = True
-
     def on_view_pop(e):
-        handle_back()
+        if len(page.views) > 1:
+            page.views.pop()
+            current_section["name"]="home" if len(page.views)==1 else current_section["name"]
+            top_view = page.views[-1]
+            # ارجع للرئيسية فعليا
+            if len(page.views) == 1:
+                show_home()
+            page.update()
 
-    page.on_keyboard_event = on_keyboard
-    try:
-        page.on_view_pop = on_view_pop
-    except:
-        pass
-
-    page.add(ft.Row(controls=[main_content], alignment=ft.MainAxisAlignment.CENTER, expand=True))
+    page.on_view_pop = on_view_pop
+    page.views.append(ft.View(route="/", controls=[ft.Column(controls=[top_safe_space, header_section, main_content], scroll=ft.ScrollMode.ALWAYS, expand=True)]))
     show_home()
 
 port = int(os.environ.get("PORT", 8080))
